@@ -137,7 +137,7 @@ class ModFrac:
         return (self._n * pow(self._d, -1, ModFrac._mod)) % ModFrac._mod
 
     def __repr__(self) -> str:
-        return f"({self._n}*({self._d})**(-1)) % {ModFrac._mod}"
+        return f"({self._n}/{self._d}) % {ModFrac._mod}"
 
 
 class CachedModFactorials:
@@ -261,6 +261,9 @@ def subsets_less_when_mul(numbers: list[float], limit: float,
     if max_num_elements is None:
         max_num_elements = len(numbers)
 
+    if min_num_elements > max_num_elements:
+        return
+
     if min_num_elements > len(numbers) - _next_pos:
         # We don't have enough elements left to fulfill our minimum.
         return
@@ -284,7 +287,7 @@ def subsets_less_when_mul(numbers: list[float], limit: float,
         # won't find any solutions by picking a larger number next, so exit early.
         seen_any = False
         for s in subsets_less_when_mul(numbers, limit/num, max(0, min_num_elements - 1),
-                                       max_num_elements - 1, _next_pos = ix + 1):
+                                       max(0, max_num_elements - 1), _next_pos = ix + 1):
             seen_any = True
             yield [num] + s
 
@@ -372,7 +375,7 @@ def present_in_sorted(n: float, s: list[float]) -> bool:
 
 def smallest_index_ge_in_sorted(target: float, s: list[float]) -> int:
     """Find the index of the first number in a sorted list greater than or equal to the target."""
-    if s[-1] < target:
+    if not s or s[-1] < target:
         return None
 
     if s[0] >= target:
