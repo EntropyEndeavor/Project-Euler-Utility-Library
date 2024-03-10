@@ -236,9 +236,7 @@ def factor_out_primes(num: int, primes: list[int]):
 
         while (num % p) == 0:
             factors.append(p)
-
             num //= p
-
             limit = isqrt(num)
 
     if 1 != num:
@@ -247,7 +245,8 @@ def factor_out_primes(num: int, primes: list[int]):
     return factors
 
 
-def partitions(n, smallest_allowed = None, biggest_allowed = None):
+def partitions(n: int, smallest_allowed: Optional[int] = None,
+               biggest_allowed: Optional[int] = None) -> Generator[list[int],None,None]:
     """Find the partitions of a number.
 
     By default all partitions are generated. The smallest and largest
@@ -267,7 +266,7 @@ def partitions(n, smallest_allowed = None, biggest_allowed = None):
         for rest in partitions(n-e, smallest_allowed, e):
             yield [e] + rest
 
-def factorization_exponent_sequences():
+def factorization_exponent_sequences() -> Generator[list[int],None,None]:
     """Find unique exponent sequences for prime factorizations.
 
     All the exponents for a sequence are in order from largest to
