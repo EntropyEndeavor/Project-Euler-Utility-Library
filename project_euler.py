@@ -4,8 +4,8 @@ All functions are experimental, and are not guaranteed to work in all cases.
 A timer is automatically started when the module is imported and timing
 information can be printed by calling stop_clock().
 """
-from itertools import combinations, compress, count
-from typing import Iterable, Generator, Optional
+from itertools import combinations, compress, count, zip_longest, chain
+from typing import Iterable, Optional
 from platform import python_implementation
 from math import factorial, isqrt, prod
 from time import time, process_time
@@ -246,7 +246,7 @@ def factor_out_primes(num: int, primes: list[int]):
 
 
 def partitions(n: int, smallest_allowed: Optional[int] = None,
-               biggest_allowed: Optional[int] = None) -> Generator[list[int],None,None]:
+               biggest_allowed: Optional[int] = None) -> Iterable[list[int]]:
     """Find the partitions of a number.
 
     By default all partitions are generated. The smallest and largest
@@ -262,11 +262,12 @@ def partitions(n: int, smallest_allowed: Optional[int] = None,
         yield []
         return
 
-    for e in range(min(n, biggest_allowed), smallest_allowed - 1, -1):
-        for rest in partitions(n-e, smallest_allowed, e):
-            yield [e] + rest
+    for term in range(min(n, biggest_allowed), smallest_allowed - 1, -1):
+        for rest in partitions(n-term, smallest_allowed, term):
+            yield [term] + rest
 
-def factorization_exponent_sequences() -> Generator[list[int],None,None]:
+
+def factorization_exponent_sequences() -> Iterable[list[int]]:
     """Find unique exponent sequences for prime factorizations.
 
     All the exponents for a sequence are in order from largest to
@@ -280,9 +281,24 @@ def factorization_exponent_sequences() -> Generator[list[int],None,None]:
         yield from partitions(num_primes)
 
 
+def interleave(*iterables: Iterable) -> Iterable:
+    """Interleave together any number of iterators.
+
+    This function will yield one element from each iterator in turn
+    before starting back at the first iterator and yielding the next
+    element from each iterator. All elements from all iterators will
+    be yielded even if the iterators have different sizes. If None
+    is an element in one of the iterators it will not be yielded by
+    this function.
+    """
+    for element in chain.from_iterable(zip_longest(*iterables,fillvalue=None)):
+        if element is not None:
+            yield element
+
+
 def subsets_less_when_mul(numbers: list[float], limit: float,
                           min_num_elements: int = 0, max_num_elements: Optional[int] = None,
-                          *, _next_pos: int = 0) -> Generator[list[float],None,None]:
+                          *, _next_pos: int = 0) -> Iterable[list[float]]:
     """Find all subsets where the product of the elements is less than the limit.
 
     By default subsets of any size will be generated, but limits can be provided for the size.
@@ -328,14 +344,14 @@ def subsets_less_when_mul(numbers: list[float], limit: float,
             return
 
 
-def split_combinations(items: list, left_size: int) -> Generator:
+def split_combinations(items: list, left_size: int) -> Iterable:
     """Find all combinations of elements while also retriving the non-included elements."""
     for indices in combinations(range(len(items)), left_size):
         yield ([i for ix, i in enumerate(items) if ix in indices],
                [i for ix, i in enumerate(items) if not ix in indices])
 
 
-def all_subsets(items: list, min_size: int = 0, max_size: Optional[int] = None) -> Generator:
+def all_subsets(items: list | set, min_size: int = 0, max_size: Optional[int] = None) -> Iterable:
     """Generate all subsets of a list.
 
     By default all subsets are generated, but limits can be placed on the subset size.
