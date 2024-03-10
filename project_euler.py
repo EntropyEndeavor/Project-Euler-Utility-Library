@@ -247,6 +247,40 @@ def factor_out_primes(num: int, primes: list[int]):
     return factors
 
 
+def partitions(n, smallest_allowed = None, biggest_allowed = None):
+    """Find the partitions of a number.
+
+    By default all partitions are generated. The smallest and largest
+    values for the elements inside the partion can also be controlled.
+    """
+    if smallest_allowed is None:
+        smallest_allowed = 1
+
+    if biggest_allowed is None:
+        biggest_allowed = n
+
+    if n == 0:
+        yield []
+        return
+
+    for e in range(min(n, biggest_allowed), smallest_allowed - 1, -1):
+        for rest in partitions(n-e, smallest_allowed, e):
+            yield [e] + rest
+
+def factorization_exponent_sequences():
+    """Find unique exponent sequences for prime factorizations.
+
+    All the exponents for a sequence are in order from largest to
+    smallest. The sequences will be produced in batches with the same
+    number of total prime factors. The smallest representative example
+    of a number having each sequence can be found by taking a list of
+    primes from smallest to largest and applying each exponent to the
+    corresponding prime.
+    """
+    for num_primes in count(1):
+        yield from partitions(num_primes)
+
+
 def subsets_less_when_mul(numbers: list[float], limit: float,
                           min_num_elements: int = 0, max_num_elements: Optional[int] = None,
                           *, _next_pos: int = 0) -> Generator[list[float],None,None]:
