@@ -4,10 +4,12 @@ All functions are experimental, and are not guaranteed to work in all cases.
 A timer is automatically started when the module is imported and timing
 information can be printed by calling stop_clock().
 """
+
+from __future__ import annotations
 from itertools import combinations, compress, count, zip_longest, chain
-from typing import Iterable, Optional
+from typing import Any, Collection, Iterable, Iterator, Sequence
 from platform import python_implementation
-from math import factorial, isqrt, prod
+from math import factorial, isqrt, prod, ceil, log
 from time import time, process_time
 
 
@@ -21,7 +23,7 @@ def stop_clock() -> None:
     wall_time = end_time[0] - _TIMING[0]
     proc_time = end_time[1] - _TIMING[1]
 
-    is_pypy = python_implementation() == 'PyPy'
+    is_pypy = python_implementation() == "PyPy"
     instance = " (PyPy)" if is_pypy else ""
 
     print(f"Wall time{instance}: {wall_time:.2f} seconds.")
@@ -30,17 +32,17 @@ def stop_clock() -> None:
 
 def is_square(x: int) -> bool:
     """Test if a number is a perfect square."""
-    return x == isqrt(x)**2
+    return x == isqrt(x) ** 2
 
 
 def digit_sum(n: int) -> int:
     """Compute the sum of the digits of a number."""
-    ans = 0
+    answer = 0
     while n != 0:
-        ans += n % 10
+        answer += n % 10
         n //= 10
 
-    return ans
+    return answer
 
 
 def digital_root(n: int) -> int:
@@ -56,7 +58,26 @@ def digital_root(n: int) -> int:
 
 def polygonal_number(n: int, side: int) -> int:
     """Calculate the nth polygonal number of the given side length."""
-    return ((side-2)*(n**2) - (side-4)*n)//2
+    return ((side - 2) * (n**2) - (side - 4) * n) // 2
+
+
+def scientific_notation(value: float, base: float = 10) -> tuple[float, int]:
+    """Break the value up into scientific notation.
+
+    The mantissa will be between 1 (inclusive) and base (exclusive)
+    and the exponent will be an integer."""
+    mantissa = value
+    exponent = 0
+
+    while abs(mantissa) >= base:
+        mantissa /= base
+        exponent += 1
+
+    while abs(mantissa) < 1:
+        mantissa *= base
+        exponent -= 1
+
+    return mantissa, exponent
 
 
 def multinomial(n: int, rs: Iterable[int]) -> int:
@@ -65,25 +86,37 @@ def multinomial(n: int, rs: Iterable[int]) -> int:
     This function assumes that the the sum of the
     values in rs will be exactly equal to n.
     """
-    return factorial(n)//prod(factorial(r) for r in rs)
+    return factorial(n) // prod(factorial(r) for r in rs)
 
 
 def xor_mul(a: int, b: int) -> int:
     """Perform binary long multiplication with bitwise XOR instead of addition.
 
-    The XOR multiplication was definied in Problem 810
+    The XOR multiplication was defined in Problem 810
     and has been used in a number of problems since.
-    This function will not work correctly in SageMath due to 
+    This function will not work correctly in SageMath due to
     the bitwise XOR operator being treated as exponentiation.
     """
-    ans = 0
+    answer = 0
     while a != 0:
         if a & 1:
-            ans ^= b
+            answer ^= b
         a >>= 1
         b <<= 1
 
-    return ans
+    return answer
+
+
+def nth_prime_upper_bound(n: int) -> int:
+    """A very quick upper bound for the nth prime.
+
+    Can be used as the upper limit to a prime sieve to guarantee
+    that the sieve returns at least n primes.
+    """
+    if n < 4:
+        return 5
+
+    return ceil(n * (log(n) + log(log(n))))
 
 
 class ModFrac:
@@ -96,26 +129,27 @@ class ModFrac:
     be avoided by leaving the entire computation as a fraction and only computing
     one modular inverse at the very end.
     """
-    _mod = None
 
-    def __init__(self, n: int = 0, d: int = 1):
+    _mod = 0
+
+    def __init__(self, n: int = 0, d: int = 1) -> None:
         """Initialize a modular fraction.
 
-            The default arguments are such that it will default to
-            zero when no arguments are provided, similar to other
-            numeric types, allowing it to be used easily as the value
-            type in a defaultdict.
+        The default arguments are such that it will default to
+        zero when no arguments are provided, similar to other
+        numeric types, allowing it to be used easily as the value
+        type in a defaultdict.
 
-            When one argument is provided it will be equivalent to an
-            integer with that value.
+        When one argument is provided it will be equivalent to an
+        integer with that value.
 
-            The modulus used is global (i.e. all ModFrac objects will have 
-            the same modulus) and must be set before a ModFrac is created.
+        The modulus used is global (i.e. all ModFrac objects will have
+        the same modulus) and must be set before a ModFrac is created.
         """
-        if ModFrac._mod is None:
+        if ModFrac._mod == 0:
             raise RuntimeError("Global modulus must be set before creating a ModFrac.")
-        self._n = n % ModFrac._mod
-        self._d = d % ModFrac._mod
+        self._n: int = n % ModFrac._mod
+        self._d: int = d % ModFrac._mod
 
     @classmethod
     def set_mod(cls, mod: int) -> None:
@@ -123,15 +157,15 @@ class ModFrac:
 
         This must be done to create a ModFrac, and can only be done once.
         """
-        if cls._mod is not None:
+        if cls._mod != 0:
             raise RuntimeError("Once set, the modulus cannot be changed for ModFrac.")
         cls._mod = mod
 
-    def __add__(self, other: "ModFrac") -> "ModFrac":
-        return ModFrac(self._n*other._d + other._n*self._d, other._d*self._d)
+    def __add__(self, other: ModFrac) -> ModFrac:
+        return ModFrac(self._n * other._d + other._n * self._d, other._d * self._d)
 
-    def __mul__(self, other: "ModFrac") -> "ModFrac":
-        return ModFrac(self._n*other._n, other._d*self._d)
+    def __mul__(self, other: ModFrac) -> ModFrac:
+        return ModFrac(self._n * other._n, other._d * self._d)
 
     def __int__(self) -> int:
         return (self._n * pow(self._d, -1, ModFrac._mod)) % ModFrac._mod
@@ -145,7 +179,8 @@ class CachedModFactorials:
 
     Should be used when you expect to need the values of many different factorials.
     """
-    def __init__(self, mod: int):
+
+    def __init__(self, mod: int) -> None:
         self._mod = mod
         self._cache = [1]
         self._num = 0
@@ -157,7 +192,7 @@ class CachedModFactorials:
             self._cache.append((self._cache[-1] * self._num) % self._mod)
 
     def get(self, n: int) -> int:
-        """Get the remainder of factorial(n) with the given modulus.""" 
+        """Get the remainder of factorial(n) with the given modulus."""
         self.extend(n)
 
         return self._cache[n]
@@ -168,7 +203,8 @@ class CachedModPowers:
 
     Should be used when you expect to need the values of many different powers of the base.
     """
-    def __init__(self, base: int, mod: int):
+
+    def __init__(self, base: int, mod: int) -> None:
         self._mod = mod
         self._base = base
         self._cache = [1]
@@ -189,11 +225,11 @@ class CachedModPowers:
 
 def prime_sieve(upperlimit: int) -> list[int]:
     """Use the Sieve of Eratosthenes to find all primes up to the limit."""
-    primality = [True for _ in range(upperlimit+1)]
+    primality = [True for _ in range(upperlimit + 1)]
     primality[0] = False
     primality[1] = False
 
-    for i in range(isqrt(upperlimit)+1):
+    for i in range(isqrt(upperlimit) + 1):
         if primality[i]:
             j = i**2
             while j <= upperlimit:
@@ -215,7 +251,7 @@ def prime_factor(num: int) -> list[int]:
     return factor_out_primes(num, primes)
 
 
-def factor_out_primes(num: int, primes: list[int]):
+def factor_out_primes(num: int, primes: Iterable[int]) -> list[int]:
     """Factor out all instances of the provided primes from a number.
 
     If the exponent of a prime factor is larger than one, then it will
@@ -245,12 +281,15 @@ def factor_out_primes(num: int, primes: list[int]):
     return factors
 
 
-def partitions(n: int, smallest_allowed: Optional[int] = None,
-               biggest_allowed: Optional[int] = None) -> Iterable[list[int]]:
+def partitions(
+    n: int,
+    smallest_allowed: int | None = None,
+    biggest_allowed: int | None = None,
+) -> Iterator[list[int]]:
     """Find the partitions of a number.
 
     By default all partitions are generated. The smallest and largest
-    values for the elements inside the partion can also be controlled.
+    values for the elements inside the partition can also be controlled.
     """
     if smallest_allowed is None:
         smallest_allowed = 1
@@ -263,11 +302,11 @@ def partitions(n: int, smallest_allowed: Optional[int] = None,
         return
 
     for term in range(min(n, biggest_allowed), smallest_allowed - 1, -1):
-        for rest in partitions(n-term, smallest_allowed, term):
+        for rest in partitions(n - term, smallest_allowed, term):
             yield [term] + rest
 
 
-def factorization_exponent_sequences() -> Iterable[list[int]]:
+def factorization_exponent_sequences() -> Iterator[list[int]]:
     """Find unique exponent sequences for prime factorizations.
 
     All the exponents for a sequence are in order from largest to
@@ -281,7 +320,7 @@ def factorization_exponent_sequences() -> Iterable[list[int]]:
         yield from partitions(num_primes)
 
 
-def interleave(*iterables: Iterable) -> Iterable:
+def interleave(*iterables: Iterable[Any]) -> Iterator[Any]:
     """Interleave together any number of iterators.
 
     This function will yield one element from each iterator in turn
@@ -291,21 +330,26 @@ def interleave(*iterables: Iterable) -> Iterable:
     is an element in one of the iterators it will not be yielded by
     this function.
     """
-    for element in chain.from_iterable(zip_longest(*iterables,fillvalue=None)):
+    for element in chain.from_iterable(zip_longest(*iterables, fillvalue=None)):
         if element is not None:
             yield element
 
 
-def subsets_less_when_mul(numbers: list[float], limit: float,
-                          min_num_elements: int = 0, max_num_elements: Optional[int] = None,
-                          *, _next_pos: int = 0) -> Iterable[list[float]]:
+def subsets_less_when_mul(
+    numbers: Sequence[float],
+    limit: float,
+    min_num_elements: int = 0,
+    max_num_elements: int | None = None,
+    *,
+    _next_pos: int = 0,
+) -> Iterator[list[float]]:
     """Find all subsets where the product of the elements is less than the limit.
 
     By default subsets of any size will be generated, but limits can be provided for the size.
 
     The _next_pos argument is for internal use only, and should not be provided.
     The numbers array must be in sorted order with the least element first.
-    WARNING: This function does not work correctly if the limit is less than one. 
+    WARNING: This function does not work correctly if the limit is less than one.
     """
     if max_num_elements is None:
         max_num_elements = len(numbers)
@@ -335,8 +379,13 @@ def subsets_less_when_mul(numbers: list[float], limit: float,
         # smallest number left, if we can't find any solutions at all then we
         # won't find any solutions by picking a larger number next, so exit early.
         seen_any = False
-        for s in subsets_less_when_mul(numbers, limit/num, max(0, min_num_elements - 1),
-                                       max(0, max_num_elements - 1), _next_pos = ix + 1):
+        for s in subsets_less_when_mul(
+            numbers,
+            limit / num,
+            max(0, min_num_elements - 1),
+            max(0, max_num_elements - 1),
+            _next_pos=ix + 1,
+        ):
             seen_any = True
             yield [num] + s
 
@@ -344,14 +393,20 @@ def subsets_less_when_mul(numbers: list[float], limit: float,
             return
 
 
-def split_combinations(items: list, left_size: int) -> Iterable:
-    """Find all combinations of elements while also retriving the non-included elements."""
+def split_combinations(
+    items: Sequence[Any], left_size: int
+) -> Iterator[tuple[list[Any], list[Any]]]:
+    """Find all combinations of elements while also retrieving the non-included elements."""
     for indices in combinations(range(len(items)), left_size):
-        yield ([i for ix, i in enumerate(items) if ix in indices],
-               [i for ix, i in enumerate(items) if not ix in indices])
+        yield (
+            [i for ix, i in enumerate(items) if ix in indices],
+            [i for ix, i in enumerate(items) if not ix in indices],
+        )
 
 
-def all_subsets(items: list | set, min_size: int = 0, max_size: Optional[int] = None) -> Iterable:
+def all_subsets(
+    items: Collection[Any], min_size: int = 0, max_size: int | None = None
+) -> Iterator[tuple[Any, ...]]:
     """Generate all subsets of a list.
 
     By default all subsets are generated, but limits can be placed on the subset size.
@@ -363,20 +418,22 @@ def all_subsets(items: list | set, min_size: int = 0, max_size: Optional[int] = 
         yield from combinations(items, size)
 
 
-_MILLER_RABIN_TESTS = ((2047, (2,)),
-                       (1373653, (2,3)),
-                       (9080191, (31,73)),
-                       (25326001, (2,3,5)),
-                       (3215031751, (2,3,5,7)),
-                       (4759123141, (2,7,61)),
-                       (1122004669633, (2,13,23,1662803)),
-                       (2152302898747, (2,3,5,7,11)),
-                       (3474749660383, (2,3,5,7,11,13)),
-                       (341550071728321, (2,3,5,7,11,13,17)),
-                       (3825123056546413051, (2,3,5,7,11,13,17,19,23)),
-                       (18446744073709551616, (2,3,5,7,11,13,17,19,23,29,31,37)),
-                       (318665857834031151167461, (2,3,5,7,11,13,17,19,23,29,31,37)),
-                       (3317044064679887385961981, (2,3,5,7,11,13,17,19,23,29,31,37,41)))
+_MILLER_RABIN_TESTS = (
+    (2047, (2,)),
+    (1373653, (2, 3)),
+    (9080191, (31, 73)),
+    (25326001, (2, 3, 5)),
+    (3215031751, (2, 3, 5, 7)),
+    (4759123141, (2, 7, 61)),
+    (1122004669633, (2, 13, 23, 1662803)),
+    (2152302898747, (2, 3, 5, 7, 11)),
+    (3474749660383, (2, 3, 5, 7, 11, 13)),
+    (341550071728321, (2, 3, 5, 7, 11, 13, 17)),
+    (3825123056546413051, (2, 3, 5, 7, 11, 13, 17, 19, 23)),
+    (18446744073709551616, (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)),
+    (318665857834031151167461, (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37)),
+    (3317044064679887385961981, (2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41)),
+)
 
 
 def miller_rabin(n: int) -> bool:
@@ -399,20 +456,20 @@ def miller_rabin_c(n: int, to_check: Iterable[int]) -> bool:
     if n in to_check:
         return True
 
-    d = n-1
+    d = n - 1
     s = 0
     while d % 2 == 0:
-        d = d//2
+        d = d // 2
         s += 1
 
     for a in to_check:
-        if 1 != pow(a,d,n) and all(n-1 != pow(a, 2**r * d, n) for r in range(s)):
+        if 1 != pow(a, d, n) and all(n - 1 != pow(a, 2**r * d, n) for r in range(s)):
             return False
 
     return True
 
 
-def present_in_sorted(n: float, s: list[float]) -> bool:
+def present_in_sorted(n: float, s: Sequence[float]) -> bool:
     """Determine if a given element is present inside a sorted list."""
     possible_index = smallest_index_ge_in_sorted(n, s)
 
@@ -422,7 +479,7 @@ def present_in_sorted(n: float, s: list[float]) -> bool:
     return s[possible_index] == n
 
 
-def smallest_index_ge_in_sorted(target: float, s: list[float]) -> int:
+def smallest_index_ge_in_sorted(target: float, s: Sequence[float]) -> int | None:
     """Find the index of the first number in a sorted list greater than or equal to the target."""
     if not s or s[-1] < target:
         return None
@@ -434,7 +491,7 @@ def smallest_index_ge_in_sorted(target: float, s: list[float]) -> int:
     top = len(s) - 1
 
     while top - bottom > 1:
-        middle = (top + bottom)//2
+        middle = (top + bottom) // 2
 
         if s[middle] < target:
             bottom = middle
@@ -446,9 +503,9 @@ def smallest_index_ge_in_sorted(target: float, s: list[float]) -> int:
 
 def crt(a: int, m: int, b: int, n: int) -> int:
     """Find the remainder that satisfies two modular constraints with Chinese Remainder Theorem."""
-    k = pow(m,-1,n)*(b-a)
+    k = pow(m, -1, n) * (b - a)
 
-    return (a + k*m) % (m*n)
+    return (a + k * m) % (m * n)
 
 
 class RedBlackTree:
@@ -461,7 +518,7 @@ class RedBlackTree:
     Be aware that the tree functions may sometimes return a NIL node.
     A NIL node may have arbitrary and meaningless values in the
     parent, left, right and value attributes. A NIL node will evaluate
-    to boolean False, and all other nodes will evaulate to boolean True.
+    to boolean False, and all other nodes will evaluate to boolean True.
 
     An extra attribute is reserved inside each node in case you want to
     store additional information about a tree state. For example you might
@@ -469,7 +526,7 @@ class RedBlackTree:
     be transformed to find the sum of the values less than the value in the
     node. Such extra data must be kept up to date as the tree changes. Hook
     functions starting with _extra_info are provided to make updates at the
-    relavent points in the tree functions. They do nothing in the base
+    relevant points in the tree functions. They do nothing in the base
     implementation, but you can override any/all of them as necessary.
 
     It is possible to disable the self balancing features in this tree.
@@ -477,33 +534,42 @@ class RedBlackTree:
     not want to implement the more complicated logic needed to update this
     information for the tree rotations.
     """
+
     # pylint: disable=protected-access
     class Node:
         """A Node in a self balancing binary search tree.
 
         Attribute value contains the value of the node.
-        
-        Tree functions will reutrn nodes to you, but you
+
+        Tree functions will return nodes to you, but you
         should never be creating a node yourself. Returned
-        nodes should be checked for NIL. 
+        nodes should be checked for NIL.
 
         The tree exposes hooks into certain functions to allow
         you to store extra information in the extra attribute,
         and then potentially update it as the tree changes.
         """
-        def __init__(self, value, nil_node, is_nil: bool = False):
-            self.parent = nil_node
-            self.left = nil_node
-            self.right = nil_node
+
+        def __init__(
+            self, value: Any, nil_node: RedBlackTree.Node | None, is_nil: bool = False
+        ) -> None:
+            if nil_node is None:
+                self.parent = self
+                self.left = self
+                self.right = self
+            else:
+                self.parent = nil_node
+                self.left = nil_node
+                self.right = nil_node
             self.value = value
             self.extra = None
             self._is_nil = is_nil
             self._red = not is_nil
 
-        def is_nil(self):
+        def is_nil(self) -> bool:
             """Check if this is a NIL node.
 
-            NIL nodes will automatically evaulate to boolean False, and all other
+            NIL nodes will automatically evaluate to boolean False, and all other
             nodes will evaluate to True (even if they contain value zero, for example).
 
             NIL nodes may have arbitrary data in value, parent, left and right.
@@ -511,10 +577,10 @@ class RedBlackTree:
             """
             return self._is_nil
 
-        def _is_red(self):
+        def _is_red(self) -> bool:
             return self._red
 
-        def _is_black(self):
+        def _is_black(self) -> bool:
             return not self._red
 
         def __bool__(self) -> bool:
@@ -534,13 +600,13 @@ class RedBlackTree:
 
             return f"[{self.value!r} {self.left!r} {self.right!r}]"
 
-    def __init__(self, *, balance: bool = True):
-        self._nil = self.Node(None, None, is_nil = True)
+    def __init__(self, *, balance: bool = True) -> None:
+        self._nil = self.Node(None, None, is_nil=True)
 
         self.root = self._nil
         self._balance = balance
 
-    def _iterate_subtree(self, node):
+    def _iterate_subtree(self, node: Node) -> Iterator[Any]:
         if node:
             yield from self._iterate_subtree(node.left)
 
@@ -548,17 +614,17 @@ class RedBlackTree:
 
             yield from self._iterate_subtree(node.right)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Any]:
         """Iterate through all the values in the tree in sorted order."""
         yield from self._iterate_subtree(self.root)
 
-    def find(self, value, *, direction: float = 0):
+    def find(self, value: Any, *, direction: float = 0) -> Node:
         """Find the node containing a certain value in the tree.
 
         The tree may contain multiple nodes with the same value, in
         which case any one of them may be returned by this function.
 
-        By default this function will reutrn the NIL node if the value
+        By default this function will return the NIL node if the value
         is not found in the tree. The direction argument can be used
         to have this function return the node with the largest value
         below the target value (if negative) or the smallest value above
@@ -594,7 +660,7 @@ class RedBlackTree:
 
         return x
 
-    def minimum(self, node = None):
+    def minimum(self, node: Node | None = None) -> Node:
         """Return the node with the smallest value.
 
         By default, the smallest value in the entire tree is found.
@@ -611,7 +677,7 @@ class RedBlackTree:
 
         return node
 
-    def maximum(self, node = None):
+    def maximum(self, node: Node | None = None) -> Node:
         """Return the node with the largest value.
 
         By default, the largest value in the entire tree is found.
@@ -628,7 +694,7 @@ class RedBlackTree:
 
         return node
 
-    def prev_node(self, node):
+    def prev_node(self, node: Node) -> Node:
         """Find the previous node.
 
         Can return the NIL node if the node with smallest value was provided.
@@ -643,7 +709,7 @@ class RedBlackTree:
 
         return y
 
-    def next_node(self, node):
+    def next_node(self, node: Node) -> Node:
         """Find the next node.
 
         Can return the NIL node if the node with largest value was provided.
@@ -658,7 +724,7 @@ class RedBlackTree:
 
         return y
 
-    def insert(self, value):
+    def insert(self, value: Any) -> Node:
         """Add a new node with the given value into the tree."""
         y = self._nil
         x = self.root
@@ -690,7 +756,7 @@ class RedBlackTree:
 
         return node
 
-    def delete(self, node):
+    def delete(self, node: Node) -> None:
         """Remove a node from the tree."""
         if not node:
             raise ValueError("Can't delete the NIL node.")
@@ -717,7 +783,9 @@ class RedBlackTree:
             else:
                 self._extra_info_delete_removed_node(y)
                 self._extra_info_delete_moved_node(x, y.parent, None, None)
-                self._extra_info_delete_moved_node(y, node.parent, node.left, node.right)
+                self._extra_info_delete_moved_node(
+                    y, node.parent, node.left, node.right
+                )
                 self._transplant(y, x)
                 y.right = node.right
                 y.right.parent = y
@@ -729,7 +797,7 @@ class RedBlackTree:
         if self._balance and y_was_black:
             self._rb_delete_fixup(x)
 
-    def _rotate_left(self, node):
+    def _rotate_left(self, node: Node) -> None:
         self._extra_info_balance_left_rotate(node)
         y = node.right
         node.right = y.left
@@ -748,7 +816,7 @@ class RedBlackTree:
         y.left = node
         node.parent = y
 
-    def _rotate_right(self, node):
+    def _rotate_right(self, node: Node) -> None:
         self._extra_info_balance_right_rotate(node)
         y = node.left
         node.left = y.right
@@ -767,7 +835,7 @@ class RedBlackTree:
         y.right = node
         node.parent = y
 
-    def _rb_insert_fixup(self, node):
+    def _rb_insert_fixup(self, node: Node) -> None:
         while node.parent._is_red():
             if node.parent == node.parent.parent.left:
                 y = node.parent.parent.right
@@ -802,7 +870,7 @@ class RedBlackTree:
 
         self.root._red = False
 
-    def _transplant(self, u, v):
+    def _transplant(self, u: Node, v: Node) -> None:
         if not u.parent:
             # u was the root.
             self.root = v
@@ -813,7 +881,7 @@ class RedBlackTree:
 
         v.parent = u.parent
 
-    def _rb_delete_fixup(self, node):
+    def _rb_delete_fixup(self, node: Node) -> None:
         while node != self.root and node._is_black():
             if node == node.parent.left:
                 w = node.parent.right
@@ -860,7 +928,9 @@ class RedBlackTree:
 
         node._red = False
 
-    def _extra_info_insert_traversed_node(self, _node, _new_value, _direction: int):
+    def _extra_info_insert_traversed_node(
+        self, _node: Node, _new_value: Any, _direction: int
+    ) -> None:
         """Called when we are about to branch from a node while finding insertion point.
 
         new_value is the value we are trying to insert that does not yet exist as a node.
@@ -868,11 +938,11 @@ class RedBlackTree:
         """
         return
 
-    def _extra_info_insert_created_node(self, _node):
+    def _extra_info_insert_created_node(self, _node: Node) -> None:
         """Called after we have placed a new node in the tree."""
         return
 
-    def _extra_info_delete_removed_node(self, _node):
+    def _extra_info_delete_removed_node(self, _node: Node) -> None:
         """Called when a node is about to be removed from the tree.
 
         The node may be the node that is about to be deleted from the tree entirely,
@@ -887,7 +957,13 @@ class RedBlackTree:
         """
         return
 
-    def _extra_info_delete_moved_node(self, _node, _parent, _left_child, _right_child):
+    def _extra_info_delete_moved_node(
+        self,
+        _node: Node,
+        _parent: Node,
+        _left_child: Node | None,
+        _right_child: Node | None,
+    ) -> None:
         """Called when a node is about to be moved to a new location in the tree.
 
         parent will be the new parent. The parent always changes when a node is moved.
@@ -897,11 +973,11 @@ class RedBlackTree:
         """
         return
 
-    def _extra_info_balance_left_rotate(self, _node):
+    def _extra_info_balance_left_rotate(self, _node: Node) -> None:
         """Called when a left rotate is about to be applied to the node."""
         return
 
-    def _extra_info_balance_right_rotate(self, _node):
+    def _extra_info_balance_right_rotate(self, _node: Node) -> None:
         """Called when a right rotate is about to be applied to the node."""
         return
 
